@@ -9,7 +9,7 @@ export default function Home() {
     <>
       <Navbar />
       <Hero 
-        title="Detect Early. Stay Healthy."
+        title="X-ray Insights, AI Precision. Early Detection for Better Health."
         subtitle="Hover to discover more about your health."
         imageUrl="/chest-xray.jpg" // Correct path after moving the image to the public folder
       />

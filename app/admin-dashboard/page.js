@@ -33,38 +33,38 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen dark:bg-gray-900 dark:text-white">
       {/* Navbar */}
       <Navbar />
 
-      <div className="flex-1 p-6 bg-gray-100 mt-20"> {/* Added margin-top to avoid overlap with navbar */}
+      <div className="flex-1 p-6 mt-20">
         {/* Main Content Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Metrics Section */}
-          <div className="bg-white p-4 rounded shadow-lg">
+          <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg">
             <div className="flex items-center mb-4">
-              <FaUserAlt className="text-red-600 mr-4 text-2xl" />  {/* Icon for Total Users */}
-              <h3 className="text-lg font-semibold text-black">Total Users</h3>
+              <FaUserAlt className="text-red-600 mr-4 text-2xl" />
+              <h3 className="text-lg font-semibold">Total Users</h3>
             </div>
-            <p className="text-xl text-black">{metrics.totalUsers}</p>
+            <p className="text-xl">{metrics.totalUsers}</p>
           </div>
-          <div className="bg-white p-4 rounded shadow-lg">
+          <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg">
             <div className="flex items-center mb-4">
-              <FaCalendarCheck className="text-red-600 mr-4 text-2xl" />  {/* Icon for Active Consultations */}
-              <h3 className="text-lg font-semibold text-black">Active Consultations</h3>
+              <FaCalendarCheck className="text-red-600 mr-4 text-2xl" />
+              <h3 className="text-lg font-semibold">Active Consultations</h3>
             </div>
-            <p className="text-xl text-black">{metrics.activeConsultations}</p>
+            <p className="text-xl">{metrics.activeConsultations}</p>
           </div>
-          <div className="bg-white p-4 rounded shadow-lg">
+          <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg">
             <div className="flex items-center mb-4">
-              <FaFileMedical className="text-red-600 mr-4 text-2xl" />  {/* Icon for Total Scans */}
-              <h3 className="text-lg font-semibold text-black">Total Scans</h3>
+              <FaFileMedical className="text-red-600 mr-4 text-2xl" />
+              <h3 className="text-lg font-semibold">Total Scans</h3>
             </div>
-            <p className="text-xl text-black">{metrics.totalScans}</p>
+            <p className="text-xl">{metrics.totalScans}</p>
           </div>
-          <div className="bg-white p-4 rounded shadow-lg">
-            <h3 className="text-lg font-semibold text-black">Recent Activity</h3>
-            <ul className="text-black">
+          <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg">
+            <h3 className="text-lg font-semibold">Recent Activity</h3>
+            <ul>
               {metrics.recentActivity.map((event, index) => (
                 <li key={index} className="text-sm">{event}</li>
               ))}
@@ -73,18 +73,16 @@ const AdminDashboard = () => {
         </div>
 
         {/* Example Chart Section */}
-        <div className="bg-white p-4 rounded shadow-lg mt-6">
+        <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg mt-6">
           <div className="flex items-center mb-4">
-            <FaChartLine className="text-red-600 mr-4 text-2xl" />  {/* Icon for the chart */}
-            <h3 className="text-lg font-semibold text-black">User Sign-Ups Over Time</h3>
+            <FaChartLine className="text-red-600 mr-4 text-2xl" />
+            <h3 className="text-lg font-semibold">User Sign-Ups Over Time</h3>
           </div>
           {/* Placeholder for the chart */}
-          <div style={{ height: '300px', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ height: '300px', backgroundColor: '#333333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <p className="text-center text-gray-600">Chart goes here</p>
           </div>
         </div>
-
-        {/* Add more sections for additional charts or content here */}
       </div>
 
       {/* Footer */}

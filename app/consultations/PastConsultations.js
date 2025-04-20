@@ -3,9 +3,9 @@ import { FaHistory } from 'react-icons/fa';  // Import the icon
 const PastConsultations = () => {
   return (
     <div className="mt-6">
-      <h2 className="text-2xl font-semibold text-red-600 mb-6 flex items-center">
+      <h2 className="text-2xl font-semibold text-[#003366] mb-6 flex items-center"> {/* Heading updated to blue */}
         <FaHistory className="mr-2 text-xl" />
-        Past Consultations
+        Past Appointment
       </h2>
 
       <div className="flex space-x-6">
@@ -22,7 +22,7 @@ const PastConsultations = () => {
           </div>
 
           <div className="mb-6">
-            <p className="text-gray-500 text-sm">Consultation Type</p>
+            <p className="text-gray-500 text-sm">Appointment Type</p>
             <p className="text-lg font-semibold text-gray-900">In-Person</p>
           </div>
 
@@ -53,7 +53,7 @@ const PastConsultations = () => {
           </div>
 
           <div className="mb-6">
-            <p className="text-gray-500 text-sm">Consultation Type</p>
+            <p className="text-gray-500 text-sm">Appointment Type</p>
             <p className="text-lg font-semibold text-gray-900">Video Call</p>
           </div>
 

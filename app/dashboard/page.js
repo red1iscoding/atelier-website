@@ -61,9 +61,9 @@ export default function Dashboard() {
               <div className="p-6 bg-white shadow-lg rounded-lg flex items-center">
                 {/* Display user data dynamically */}
                 <div>
-                  <h2 className="text-xl font-semibold mb-4 text-[#de0b0b]">AI Scan Results</h2>
+                  <h2 className="text-xl font-semibold mb-4 text-[#003366]">AI Scan Results</h2> {/* Changed to blue */}
                   <p className="text-[#444444]">Status: {user.recentScanStatus}</p>
-                  <button className="mt-4 bg-[#de0b0b] text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-200">
+                  <button className="mt-4 bg-[#003366] text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200"> {/* Changed to blue */}
                     View Recent Scan
                   </button>
                 </div>

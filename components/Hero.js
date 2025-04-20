@@ -1,4 +1,4 @@
-"use client"; // This marks the component as client-side
+'use client'; // Ensure this is at the top to mark the file as a client component
 
 import { useState, useEffect } from "react";
 import Link from "next/link"; // Ensure you import the Link component for navigation
@@ -44,9 +44,6 @@ export default function Hero({ title, subtitle, imageUrl }) {
           height: "100vh", // Full height of the viewport
         }}
       >
-        
-
-
         {/* Text and Button Container */}
         <div
           className="absolute top-1/4 left-1/2 transform -translate-x-1/2 text-center z-20"
@@ -55,7 +52,7 @@ export default function Hero({ title, subtitle, imageUrl }) {
           style={{ zIndex: 20 }}
         >
           {/* Title */}
-          <h1 className="text-8xl font-bold mb-4 transition-all duration-500 hover:scale-105 hover:text-red-300 hover:text-shadow-lg">
+          <h1 className="text-8xl font-bold mb-4 transition-all duration-500 hover:scale-105 hover:text-[#003366] hover:text-shadow-lg">
             {title}
           </h1>
           <p className="text-xl mb-6">{subtitle}</p>
@@ -67,7 +64,7 @@ export default function Hero({ title, subtitle, imageUrl }) {
             onMouseLeave={() => setHovered(false)} // Reset hover state when mouse leaves
           >
             <Link href="/signup">
-              <button className="px-8 py-4 bg-red-500 text-white text-2xl font-semibold rounded-full hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-500 transition-all duration-300">
+              <button className="px-8 py-4 bg-[#003366] text-white text-2xl font-semibold rounded-full hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500 transition-all duration-300">
                 Sign Up Now
               </button>
             </Link>

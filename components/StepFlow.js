@@ -37,8 +37,8 @@ export default function StepFlow() {
   return (
     <div className="bg-white py-16">
       <div className="text-center mb-10">
-        {/* Header with red color and description */}
-        <h2 className="text-4xl font-bold text-red-600">How TrustScan Works</h2> {/* Text now red */}
+        {/* Header with blue color and description */}
+        <h2 className="text-4xl font-bold text-blue-700">How TrustScan Works</h2> {/* Text now blue */}
         <p className="text-lg mt-2 text-gray-600">Discover the seamless process of how TrustScan helps detect early health issues through advanced AI technology.</p> {/* New description */}
       </div>
 
@@ -67,7 +67,7 @@ export default function StepFlow() {
             )}
 
             {/* Step Title */}
-            <p className="text-center mt-4 font-semibold text-lg" style={{ color: "#DE0B0B" }}>
+            <p className="text-center mt-4 font-semibold text-lg" style={{ color: "#003366" }}>
               {currentStep === index ? step.title : ""}
             </p>
 
@@ -76,7 +76,7 @@ export default function StepFlow() {
               className={`absolute top-24 left-1/2 transform -translate-x-1/2 opacity-0 transition-opacity duration-500`}
               style={{
                 display: currentStep === index ? "block" : "none",
-                color: "#DE0B0B", // Set the text color to #DE0B0B for the description
+                color: "#003366", // Set the text color to blue (#003366) for the description
               }}
             >
               <p className="text-sm">{step.description}</p>

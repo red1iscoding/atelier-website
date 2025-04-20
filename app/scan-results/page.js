@@ -30,13 +30,13 @@ const ScanResults = () => {
           <Navbar />
 
           <div className="container mx-auto px-6 py-12">
-            {/* Header with Red Text */}
+            {/* Header with Blue Text */}
             <div className="header mb-8 text-left">
-              <h1 className="text-4xl sm:text-5xl font-extrabold text-red-600">Scan Results</h1>
-              <p className="text-xl sm:text-2xl text-red-600 mt-2 font-semibold">
+              <h1 className="text-4xl sm:text-5xl font-extrabold text-[#003366]">Scan Results</h1> {/* Heading updated to blue */}
+              <p className="text-xl sm:text-2xl text-[#003366] mt-2 font-semibold">
                 Here are the detailed results of your scan analysis.
               </p>
-              <p className="text-lg sm:text-xl text-red-600 mt-4 font-medium">
+              <p className="text-lg sm:text-xl text-[#003366] mt-4 font-medium">
                 Patient: {scanData.patientName}, Age: 30, Scan Type: {scanData.scanType}, Date: {scanData.scanDate}
               </p>
             </div>
@@ -44,7 +44,7 @@ const ScanResults = () => {
             {/* Scan Overview Section */}
             <section className="scan-overview bg-white p-6 rounded-lg shadow-lg mb-8">
               <div className="flex items-center space-x-4 mb-6">
-                <FaFileAlt className="text-red-600 text-3xl" />
+                <FaFileAlt className="text-[#003366] text-3xl" />
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">Scan Overview</h2>
               </div>
 
@@ -78,7 +78,7 @@ const ScanResults = () => {
             {/* AI Analysis Section */}
             <section className="ai-analysis bg-gray-50 p-6 rounded-lg shadow-lg mb-8">
               <div className="flex items-center space-x-4 mb-4">
-                <FaHeartbeat className="text-red-600 text-3xl" />
+                <FaHeartbeat className="text-[#003366] text-3xl" />
                 <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800">AI Analysis</h2>
               </div>
               <div className="disease-classification space-y-4">
@@ -88,7 +88,7 @@ const ScanResults = () => {
                     className="flex justify-between items-center p-4 bg-gray-200 rounded-lg hover:bg-gray-300 transition-all"
                   >
                     <p className="text-lg font-medium">{result.diseaseName}</p>
-                    <p className="text-lg font-bold text-red-600">{result.confidence}%</p>
+                    <p className="text-lg font-bold text-[#003366]">{result.confidence}%</p>
                   </div>
                 ))}
               </div>
@@ -96,7 +96,7 @@ const ScanResults = () => {
 
             {/* Download Report Section */}
             <section className="download-report bg-gray-50 p-6 rounded-lg shadow-lg mb-8">
-              <button className="w-full py-2 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+              <button className="w-full py-2 px-4 bg-[#003366] text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
                 <FaDownload className="inline-block mr-2" />
                 Download PDF Report
               </button>
@@ -106,14 +106,14 @@ const ScanResults = () => {
             {/* Next Steps Section */}
             <section className="next-steps bg-gray-50 p-6 rounded-lg shadow-lg">
               <div className="flex items-center space-x-4 mb-4">
-                <FaRedo className="text-red-600 text-3xl" />
+                <FaRedo className="text-[#003366] text-3xl" />
                 <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800">Next Steps</h2>
               </div>
-              <button className="w-full py-2 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors mb-4">
+              <button className="w-full py-2 px-4 bg-[#003366] text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors mb-4">
                 <FaUserMd className="inline-block mr-2" />
                 Consult Now
               </button>
-              <button className="w-full py-2 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+              <button className="w-full py-2 px-4 bg-[#003366] text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
                 <FaFileAlt className="inline-block mr-2" />
                 Re-upload Scan
               </button>

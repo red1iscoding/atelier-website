@@ -3,7 +3,7 @@ import { FaClock } from 'react-icons/fa';  // Import the icon
 const UpcomingAppointments = () => {
   return (
     <div className="mt-6">
-      <h2 className="text-2xl font-semibold text-red-600 mb-6 flex items-center">
+      <h2 className="text-2xl font-semibold text-[#003366] mb-6 flex items-center"> {/* Heading updated to blue */}
         <FaClock className="mr-2 text-xl" />
         Upcoming Appointments
       </h2>
@@ -36,7 +36,7 @@ const UpcomingAppointments = () => {
 
           {/* Action Section */}
           <div className="flex justify-between space-x-4">
-            <button className="text-red-600 hover:bg-red-100 py-2 px-4 rounded-full border border-red-600 transition-all duration-200">
+            <button className="text-[#003366] hover:bg-blue-100 py-2 px-4 rounded-full border border-[#003366] transition-all duration-200">
               Cancel
             </button>
             <button className="text-blue-600 hover:bg-blue-100 py-2 px-4 rounded-full border border-blue-600 transition-all duration-200">

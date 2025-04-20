@@ -18,7 +18,7 @@ const ConsultationPage = () => {
           <div className="mt-6">
             <h1 className="text-2xl font-bold flex items-center">
               <FaUserMd className="mr-2 text-xl" />
-              Your Consultation Dashboard
+              Your Appointment Dashboard
             </h1>
 
             {/* Upcoming Appointments */}
@@ -33,6 +33,7 @@ const ConsultationPage = () => {
             {/* Notifications and Reminders */}
             <ConsultationNotifications />
           </div>
+          
         </div>
       </div>
       <Footer />

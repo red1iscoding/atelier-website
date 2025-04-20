@@ -3,7 +3,7 @@ import { FaBell } from 'react-icons/fa';  // Import the icon
 const ConsultationNotifications = () => {
   return (
     <div className="mt-6">
-      <h2 className="text-2xl font-semibold text-red-600 mb-6 flex items-center">
+      <h2 className="text-2xl font-semibold text-[#003366] mb-6 flex items-center"> {/* Heading updated to blue */}
         <FaBell className="mr-2 text-xl" />
         Consultation Reminders
       </h2>
@@ -27,7 +27,7 @@ const ConsultationNotifications = () => {
           <button className="w-full bg-blue-600 text-white py-3 rounded-full hover:bg-blue-700 transition-all duration-200">
             Manage Notifications
           </button>
-          <button className="w-full bg-red-600 text-white py-3 rounded-full hover:bg-red-700 transition-all duration-200">
+          <button className="w-full bg-[#003366] text-white py-3 rounded-full hover:bg-blue-700 transition-all duration-200"> {/* Changed to blue */}
             Turn Off Reminders
           </button>
         </div>

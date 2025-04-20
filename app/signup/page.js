@@ -99,47 +99,47 @@ export default function SignUp() {
       
       {/* Main Flex Container */}
       <div className="flex justify-center items-center w-full max-w-screen-xl px-8 py-16">
-        {/* Left Section: Background text in red */}
+        {/* Left Section: Background text in blue */}
         <div className="flex-1 p-8">
-          <h1 className="text-6xl font-bold mb-4 text-[#DE0B0B]">Revolutionize Your Health</h1>
-          <p className="text-2xl mb-4 text-[#DE0B0B]">
+          <h1 className="text-6xl font-bold mb-4 text-[#003366]">Revolutionize Your Health</h1>
+          <p className="text-2xl mb-4 text-[#003366]">
             Join TrustScan and harness the power of AI for personalized, life-changing diagnostics.
           </p>
-          <p className="text-xl text-[#DE0B0B]">
+          <p className="text-xl text-[#003366]">
             Experience a smarter, healthier future today.
           </p>
         </div>
 
         {/* Right Section with Sign-Up Card */}
         <div className="flex-1 bg-white p-8 rounded-lg shadow-2xl max-w-md w-full">
-          <h2 className="text-3xl font-bold mb-6 text-center text-[#DE0B0B]">Sign Up to TrustScan</h2>
+          <h2 className="text-3xl font-bold mb-6 text-center text-[#003366]">Sign Up to TrustScan</h2>
           
           {/* Display error message */}
-          {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
+          {error && <p className="text-blue-500 text-sm text-center mb-4">{error}</p>}
 
           {/* Sign-Up Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="mb-4">
-              <label htmlFor="fullName" className="block text-sm font-medium text-[#DE0B0B]">Full Name</label>
+              <label htmlFor="fullName" className="block text-sm font-medium text-[#003366]">Full Name</label>
               <input 
                 type="text" 
                 id="fullName" 
                 value={fullName} 
                 onChange={(e) => setFullName(e.target.value)} 
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800 placeholder-gray-500"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800 placeholder-gray-500"
                 placeholder="Enter your full name"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="gender" className="block text-sm font-medium text-[#DE0B0B]">Gender</label>
+              <label htmlFor="gender" className="block text-sm font-medium text-[#003366]">Gender</label>
               <select
                 id="gender"
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
               >
                 <option value="">Select your gender</option>
                 <option value="male">Male</option>
@@ -148,76 +148,76 @@ export default function SignUp() {
             </div>
 
             <div className="mb-4">
-              <label htmlFor="dob" className="block text-sm font-medium text-[#DE0B0B]">Date of Birth</label>
+              <label htmlFor="dob" className="block text-sm font-medium text-[#003366]">Date of Birth</label>
               <input 
                 type="date" 
                 id="dob" 
                 value={dob} 
                 onChange={(e) => setDob(e.target.value)} 
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="email" className="block text-sm font-medium text-[#DE0B0B]">Email Address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-[#003366]">Email Address</label>
               <input 
                 type="email" 
                 id="email" 
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
                 placeholder="Enter your email"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="phone" className="block text-sm font-medium text-[#DE0B0B]">Phone Number</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-[#003366]">Phone Number</label>
               <input 
                 type="tel" 
                 id="phone" 
                 value={phone} 
                 onChange={(e) => setPhone(e.target.value)} 
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
                 placeholder="Enter your phone number (optional)"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-[#DE0B0B]">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-[#003366]">Password</label>
               <input 
                 type="password" 
                 id="password" 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
                 placeholder="Create a password"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#DE0B0B]">Confirm Password</label>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#003366]">Confirm Password</label>
               <input 
                 type="password" 
                 id="confirmPassword" 
                 value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
                 placeholder="Confirm your password"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="subscription" className="block text-sm font-medium text-[#DE0B0B]">Subscription Plan</label>
+              <label htmlFor="subscription" className="block text-sm font-medium text-[#003366]">Subscription Plan</label>
               <select
                 id="subscription"
                 value={subscription}
                 onChange={(e) => setSubscription(e.target.value)}
                 required
-                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#DE0B0B] focus:border-[#DE0B0B] text-gray-800"
+                className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
               >
                 <option value="">Select a subscription plan</option>
                 <option value="basic">Basic Plan</option>
@@ -226,7 +226,7 @@ export default function SignUp() {
             </div>
 
             <div className="mb-4">
-              <label className="flex items-center text-sm text-[#DE0B0B]">
+              <label className="flex items-center text-sm text-[#003366]">
                 <input 
                   type="checkbox" 
                   required 
@@ -242,7 +242,7 @@ export default function SignUp() {
               <button 
                 type="submit" 
                 disabled={loading} 
-                className={`w-full ${loading ? 'bg-gray-400' : 'bg-[#DE0B0B]'} text-white py-3 rounded-md shadow-md hover:bg-red-700 transition transform hover:scale-105`}
+                className={`w-full ${loading ? 'bg-gray-400' : 'bg-[#003366]'} text-white py-3 rounded-md shadow-md hover:bg-blue-700 transition transform hover:scale-105`}
               >
                 {loading ? 'Processing...' : 'Create Account'}
               </button>

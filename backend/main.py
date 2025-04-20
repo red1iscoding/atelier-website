@@ -1,13 +1,13 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.middleware.cors import CORSMiddleware  # Import CORS middleware
+from fastapi.middleware.cors import CORSMiddleware  # CORS middleware
 from datetime import datetime, timedelta
 import bcrypt
 import jwt
 import os
 from dotenv import load_dotenv
 from config import supabase
-from models import UserCreate, UserLogin  # Ensure UserCreate includes the new fields
+from models import UserCreate, UserLogin, UserUpdate  # Ensure these models exist
 
 # Load environment variables from .env
 load_dotenv()
@@ -15,7 +15,7 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# Add CORS middleware to allow cross-origin requests
+# CORS middleware to allow cross-origin requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins (use specific origins in production for security)
@@ -40,8 +40,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except jwt.JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
+# Function to check admin role
+def is_admin(current_user: str = Depends(get_current_user)):
+    user_data = supabase.table("users").select("role").eq("email", current_user).execute()
+    if user_data.error or user_data.data[0]['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
-# Updated signup function with correct response handling
+# User signup
 @app.post("/signup")
 async def signup(user: UserCreate):
     hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
@@ -68,8 +74,7 @@ async def signup(user: UserCreate):
         print(f"Error: {e}")  # Log the exact error message
         raise HTTPException(status_code=400, detail=f"User creation failed: {str(e)}")
 
-
-# User login route (returns JWT token)
+# User login
 @app.post("/login")
 async def login(user: UserLogin):
     response = supabase.table("users").select("*").eq("email", user.email).execute()
@@ -84,7 +89,7 @@ async def login(user: UserLogin):
     token = jwt.encode({"sub": user.email, "exp": expiration}, SECRET_KEY, algorithm="HS256")
     return {"access_token": token, "token_type": "bearer"}
 
-# User info endpoint (protected)
+# Get user info (protected route)
 @app.get("/user-info")
 async def get_user_info(current_user: str = Depends(get_current_user)):
     try:
@@ -94,3 +99,81 @@ async def get_user_info(current_user: str = Depends(get_current_user)):
         return response.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error retrieving user data")
+
+# Admin - Update user info (admin side)
+@app.put("/admin/user/{user_id}")
+async def update_user(user_id: int, user_update: UserUpdate, current_user: str = Depends(is_admin)):
+    response = supabase.table("users").select("*").eq("user_id", user_id).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    updated_data = {
+        "full_name": user_update.full_name,
+        "gender": user_update.gender,
+        "date_of_birth": user_update.dob,
+        "phone_number": user_update.phone,
+    }
+
+    # Update user data in database
+    update_response = supabase.table("users").update(updated_data).eq("user_id", user_id).execute()
+    if update_response.error:
+        raise HTTPException(status_code=400, detail="Failed to update user info")
+
+    return {"message": "User info updated successfully."}
+
+# Admin - Create consultation (appointment)
+@app.post("/admin/consultations")
+async def create_appointment(consultation_data: dict, current_user: str = Depends(is_admin)):
+    response = supabase.table("consultations").insert(consultation_data).execute()
+
+    if response.error:
+        raise HTTPException(status_code=400, detail="Failed to create consultation")
+
+    return {"message": "Consultation created successfully."}
+
+# Admin - Manage scans (add or update scans)
+@app.post("/admin/scans")
+async def add_scan(scan_data: dict, current_user: str = Depends(is_admin)):
+    response = supabase.table("scans").insert(scan_data).execute()
+
+    if response.error:
+        raise HTTPException(status_code=400, detail="Failed to add scan")
+
+    return {"message": "Scan added successfully."}
+
+# Admin - Update scan data
+@app.put("/admin/scans/{scan_id}")
+async def update_scan(scan_id: int, scan_data: dict, current_user: str = Depends(is_admin)):
+    response = supabase.table("scans").update(scan_data).eq("scan_id", scan_id).execute()
+
+    if response.error:
+        raise HTTPException(status_code=400, detail="Failed to update scan")
+
+    return {"message": "Scan updated successfully."}
+
+# Admin - Get all users (for admin dashboard)
+@app.get("/admin/users")
+async def get_users(current_user: str = Depends(is_admin)):
+    response = supabase.table("users").select("*").execute()
+    if response.error:
+        raise HTTPException(status_code=400, detail="Failed to retrieve users")
+
+    return {"users": response.data}
+
+# Admin - Get consultations
+@app.get("/admin/consultations")
+async def get_consultations(current_user: str = Depends(is_admin)):
+    response = supabase.table("consultations").select("*").execute()
+    if response.error:
+        raise HTTPException(status_code=400, detail="Failed to retrieve consultations")
+
+    return {"consultations": response.data}
+
+# Admin - Get scans
+@app.get("/admin/scans")
+async def get_scans(current_user: str = Depends(is_admin)):
+    response = supabase.table("scans").select("*").execute()
+    if response.error:
+        raise HTTPException(status_code=400, detail="Failed to retrieve scans")
+
+    return {"scans": response.data}
