@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import Sidebar from '../../components/Sidebar';
 import HealthMetrics from '../../components/HealthMetrics';
@@ -9,33 +9,22 @@ import Footer from '../../components/Footer';
 import UserInfo from '../../components/UserInfo';
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState({
+    fullName: 'Sarah Haddad', 
+    subscriptionStatus: 'Premium',
+    planExpiry: '2025-12-31',
+    recentScanStatus: 'Awaiting Analysis',
+  });
+  
+  const [loading, setLoading] = useState(false);  // No longer loading from backend
   const [error, setError] = useState('');
 
+  // Simulate loading process (you can remove useEffect and this state if you want no loading)
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Fetch user data with the token from backend
-      fetch('http://127.0.0.1:8000/user-info', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          setUser(data);
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError('Error fetching user data');
-          setLoading(false);
-        });
-    } else {
-      setError('User not authenticated');
+    setLoading(true);
+    setTimeout(() => {
       setLoading(false);
-    }
+    }, 1000); // Simulate a delay
   }, []);
 
   if (loading) {
@@ -55,24 +44,17 @@ export default function Dashboard() {
         <div className="w-full p-8">
           <UserInfo user={user} />
 
-          {/* Check if user data exists before rendering */}
-          {user ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="p-6 bg-white shadow-lg rounded-lg flex items-center">
-                {/* Display user data dynamically */}
-                <div>
-                  <h2 className="text-xl font-semibold mb-4 text-[#003366]">AI Scan Results</h2> {/* Changed to blue */}
-                  <p className="text-[#444444]">Status: {user.recentScanStatus}</p>
-                  <button className="mt-4 bg-[#003366] text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200"> {/* Changed to blue */}
-                    View Recent Scan
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="p-6 bg-white shadow-lg rounded-lg flex items-center">
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-[#003366]">AI Scan Results</h2>
+                <p className="text-[#444444]">Status: {user.recentScanStatus}</p>
+                <button className="mt-4 bg-[#003366] text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
+                  View Recent Scan
+                </button>
               </div>
-              {/* Repeat for other dashboard sections */}
             </div>
-          ) : (
-            <div>No user data available.</div>
-          )}
+          </div>
 
           <HealthMetrics />
           <Notifications />

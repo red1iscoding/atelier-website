@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaPaypal, FaCreditCard, FaCheckCircle, FaArrowLeft } from 'react-icons/fa';
-import Link from 'next/link';
 
 const PaymentPage = () => {
   const router = useRouter();
@@ -61,6 +60,9 @@ const PaymentPage = () => {
     setTimeout(() => {
       setIsPaymentProcessing(false);
       setPaymentSuccess(true);
+      setTimeout(() => {
+        router.push('/consultations');
+      }, 3000);
     }, 2000);
   };
 
@@ -90,12 +92,12 @@ const PaymentPage = () => {
             <p className="font-medium">Amount Paid: {appointmentDetails.upfrontPayment} DZD</p>
             <p className="text-sm text-gray-600">Remaining {remainingPayment} DZD to be paid at the facility</p>
           </div>
-          <Link
-            href="/consultations/page"
-            className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors block"
+          <button
+            onClick={() => router.push('/consultations')}
+            className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Back to Consultations
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -127,7 +129,6 @@ const PaymentPage = () => {
                 <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
                 <div className="space-y-4">
                   <button
-                    type="button"
                     className={`w-full p-4 rounded-lg border-2 flex items-center ${paymentMethod === 'card' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
                     onClick={() => setPaymentMethod('card')}
                   >
@@ -136,7 +137,6 @@ const PaymentPage = () => {
                   </button>
 
                   <button
-                    type="button"
                     className={`w-full p-4 rounded-lg border-2 flex items-center ${paymentMethod === 'paypal' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
                     onClick={() => setPaymentMethod('paypal')}
                   >
@@ -145,7 +145,6 @@ const PaymentPage = () => {
                   </button>
 
                   <button
-                    type="button"
                     className={`w-full p-4 rounded-lg border-2 flex items-center ${paymentMethod === 'dahabia' ? 'border-yellow-600 bg-yellow-50' : 'border-gray-200 hover:border-yellow-300'}`}
                     onClick={() => setPaymentMethod('dahabia')}
                   >
@@ -162,10 +161,9 @@ const PaymentPage = () => {
                 {paymentMethod === 'card' && (
                   <div className="mt-6 space-y-4">
                     <div>
-                      <label htmlFor="cardName" className="block text-sm font-medium text-gray-700 mb-1">Cardholder Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cardholder Name</label>
                       <input
                         type="text"
-                        id="cardName"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Name on card"
                         value={cardName}
@@ -174,10 +172,9 @@ const PaymentPage = () => {
                     </div>
 
                     <div>
-                      <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
                       <input
                         type="text"
-                        id="cardNumber"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="1234 5678 9012 3456"
                         value={cardNumber}
@@ -188,20 +185,18 @@ const PaymentPage = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700 mb-1">Expiration Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Expiration Date</label>
                         <input
                           type="month"
-                          id="expirationDate"
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           value={expirationDate}
                           onChange={(e) => setExpirationDate(e.target.value)}
                         />
                       </div>
                       <div>
-                        <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
                         <input
                           type="text"
-                          id="cvv"
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="123"
                           value={cvv}

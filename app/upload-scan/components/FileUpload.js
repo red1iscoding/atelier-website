@@ -1,5 +1,3 @@
-// app/upload-scan/components/FileUpload.js
-
 'use client';  // Add this line at the top
 
 import React, { useState } from 'react';
@@ -34,7 +32,7 @@ const FileUpload = ({ onUploadSuccess }) => {
             <input
                 type="file"
                 onChange={handleFileChange}
-                className="mb-4 py-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#de0b0b] w-full"
+                className="mb-4 py-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 w-full"  // Updated to valid Tailwind CSS class
             />
             {selectedFile && (
                 <div className="mt-2 text-lg text-gray-700">

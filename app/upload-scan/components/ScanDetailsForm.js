@@ -1,5 +1,6 @@
 // app/upload-scan/components/ScanDetailsForm.js
 
+
 'use client';  // Add this line at the top
 
 import React, { useState } from 'react';

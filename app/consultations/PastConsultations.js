@@ -5,7 +5,7 @@ const PastConsultations = () => {
     <div className="mt-6">
       <h2 className="text-2xl font-semibold text-[#003366] mb-6 flex items-center"> {/* Heading updated to blue */}
         <FaHistory className="mr-2 text-xl" />
-        Past Appointment
+        Past Appointments
       </h2>
 
       <div className="flex space-x-6">
@@ -18,7 +18,7 @@ const PastConsultations = () => {
 
           <div className="mb-4">
             <p className="text-gray-500 text-sm">Physician</p>
-            <p className="text-lg font-semibold text-gray-900">Dr. Jane Smith (Cardiology)</p>
+            <p className="text-lg font-semibold text-gray-900">Dr. Lila Benali </p>
           </div>
 
           <div className="mb-6">
@@ -49,7 +49,7 @@ const PastConsultations = () => {
 
           <div className="mb-4">
             <p className="text-gray-500 text-sm">Physician</p>
-            <p className="text-lg font-semibold text-gray-900">Dr. John Doe (Orthopedics)</p>
+            <p className="text-lg font-semibold text-gray-900">Dr. Malik Haddad</p>
           </div>
 
           <div className="mb-6">
