@@ -38,47 +38,55 @@ const CreateAppointment = () => {
     },
   ];
 
+
+
+
+
   const handlePay = () => {
     if (!consultationType || !facility || !date || !time) {
       setErrorMessage('Please fill in all fields.');
       return;
     }
-
+  
     const currentDate = new Date();
     const selectedDate = new Date(date);
     const selectedDateTime = new Date(`${selectedDate.toISOString().split('T')[0]}T${time}`);
     const timeDifference = selectedDateTime - currentDate;
     const hoursDifference = timeDifference / (1000 * 3600);
-
+  
     if (hoursDifference < 24) {
       setErrorMessage('Appointments must be booked at least 24 hours in advance.');
       return;
     }
-
+  
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const fullPrice = Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
-      const upfrontPayment = Math.round(fullPrice * 0.2);
-
-      const appointmentDetails = {
-        consultationType,
-        facility,
-        date: selectedDate.toISOString(),
-        time,
-        fullPrice,
-        upfrontPayment,
-        facilityAddress: facilities.find(f => f.name === facility)?.address || '',
-        facilityImage: facilities.find(f => f.name === facility)?.image || ''
-      };
-
-      const encodedDetails = encodeURIComponent(JSON.stringify(appointmentDetails));
-      router.push(`/consultations/payment?details=${encodedDetails}`);
-      setIsLoading(false);
-    }, 1000);
+  
+    // Generate random price between 4000 and 10000 DZD
+    const fullPrice = Math.floor(Math.random() * (10000 - 4000 + 1)) + 4000;
+    const upfrontPayment = Math.round(fullPrice * 0.2); // 20% upfront
+  
+    const appointmentDetails = {
+      consultationType,
+      facility,
+      date: selectedDate.toISOString(),
+      time,
+      facilityAddress: facilities.find(f => f.name === facility)?.address || '',
+      facilityImage: facilities.find(f => f.name === facility)?.image || '',
+      fullPrice,
+      upfrontPayment,
+      userId: localStorage.getItem("user_id") || null
+    };
+  
+    // Pass details to payment page
+    const encodedDetails = encodeURIComponent(JSON.stringify(appointmentDetails));
+    router.push(`/payment?details=${encodedDetails}`);
+    setIsLoading(false);
   };
 
+
+
+
+  
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       <div className="max-w-6xl mx-auto p-4 md:p-8">
@@ -187,7 +195,6 @@ const CreateAppointment = () => {
                 </div>
               </div>
 
-              {/* Payment Button */}
               <div className="pt-4">
                 <button
                   onClick={handlePay}
@@ -216,5 +223,3 @@ const CreateAppointment = () => {
 };
 
 export default CreateAppointment;
-
-

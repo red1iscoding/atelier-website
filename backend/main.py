@@ -1,59 +1,101 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.middleware.cors import CORSMiddleware  # CORS middleware
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import bcrypt
 import jwt
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from typing import Optional
 from config import supabase
-from models import UserCreate, UserLogin, UserUpdate  # Ensure these models exist
+import logging
 
-# Load environment variables from .env
+# Load environment variables
 load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS middleware to allow cross-origin requests
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (use specific origins in production for security)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, OPTIONS, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Define OAuth2 scheme for JWT token authorization
+# OAuth2 scheme for JWT
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
-# Retrieve the secret key from .env
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-# Dependency to decode the JWT token and extract the current user
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ====== MODELS ======
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str
+    gender: str
+    dob: str
+    phone: str
+    subscription_plan: str = "basic"
+    payment_status: str = "pending"
+    unlimited_scans: bool = False
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserUpdate(BaseModel):
+    full_name: str
+    gender: str
+    dob: str
+    phone: str
+
+class PaymentDetails(BaseModel):
+    method: str  # "dahabiya" or "paypal"
+    card_number: Optional[str] = None
+    expiry: Optional[str] = None
+    cvv: Optional[str] = None
+    paypal_email: Optional[str] = None
+
+class AppointmentWithPayment(BaseModel):
+    appointment_type: str
+    facility: str
+    appointment_date: str
+    appointment_time: str
+    notes: Optional[str] = None
+    full_price: float
+    upfront_payment: float
+    facility_address: Optional[str] = None
+    facility_image: Optional[str] = None
+    payment: PaymentDetails
+
+# ====== AUTH HELPERS ======
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         return payload["sub"]
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+        raise HTTPException(status_code=401, detail="Token expired")
     except jwt.JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-# Function to check admin role
 def is_admin(current_user: str = Depends(get_current_user)):
-    user_data = supabase.table("users").select("role").eq("email", current_user).execute()
-    if user_data.error or user_data.data[0]['role'] != 'admin':
+    user = supabase.table("users").select("role").eq("email", current_user).execute().data[0]
+    if user['role'] != 'admin':
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
-# User signup
+# ====== AUTH ROUTES ======
 @app.post("/signup")
 async def signup(user: UserCreate):
     hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
-    
     try:
-        # Insert user data into Supabase (Database)
         response = supabase.table("users").insert({
             "email": user.email,
             "password": hashed_password.decode('utf-8'),
@@ -61,20 +103,24 @@ async def signup(user: UserCreate):
             "gender": user.gender,
             "date_of_birth": user.dob,
             "phone_number": user.phone,
-            "role": "user",  # Default role
-            "status": "active",  # Default status
+            "role": "patient",
+            "status": "active",
+            "subscription_plan": user.subscription_plan,
+            "payment_status": user.payment_status,
+            "unlimited_scans": user.unlimited_scans
         }).execute()
-
-        if response.error:  # Check for errors in the response
-            raise HTTPException(status_code=400, detail=f"Failed to create user: {response.error_message}")
         
-        return {"message": "User created successfully."}
-    
+        if not response.data:
+            raise HTTPException(status_code=400, detail="User creation failed")
+        
+        return {
+            "message": "User created successfully",
+            "user_id": response.data[0]['user_id']
+        }
     except Exception as e:
-        print(f"Error: {e}")  # Log the exact error message
+        logger.error(f"Signup error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"User creation failed: {str(e)}")
 
-# User login
 @app.post("/login")
 async def login(user: UserLogin):
     response = supabase.table("users").select("*").eq("email", user.email).execute()
@@ -85,95 +131,207 @@ async def login(user: UserLogin):
     if not bcrypt.checkpw(user.password.encode('utf-8'), stored_user['password'].encode('utf-8')):
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
-    expiration = datetime.utcnow() + timedelta(hours=1)
-    token = jwt.encode({"sub": user.email, "exp": expiration}, SECRET_KEY, algorithm="HS256")
+    token = jwt.encode(
+        {"sub": user.email, "exp": datetime.utcnow() + timedelta(hours=1)},
+        SECRET_KEY,
+        algorithm="HS256"
+    )
     return {"access_token": token, "token_type": "bearer"}
 
-# Get user info (protected route)
 @app.get("/user-info")
 async def get_user_info(current_user: str = Depends(get_current_user)):
     try:
-        response = supabase.table("users").select("*").eq("email", current_user).execute()
+        user = supabase.table("users").select("*").eq("email", current_user).execute().data[0]
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ====== APPOINTMENT ROUTES ======
+@app.post("/appointments")
+async def create_appointment(
+    appointment: AppointmentWithPayment, 
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        # Get user ID
+        user = supabase.table("users").select("user_id").eq("email", current_user).execute().data[0]
+        
+        # Process payment (mock)
+        payment_status = "paid"  # In real app, verify with payment gateway
+        
+        # Create appointment
+        appointment_data = {
+            "user_id": user["user_id"],
+            "appointment_type": appointment.appointment_type,
+            "facility": appointment.facility,
+            "appointment_date": appointment.appointment_date,
+            "appointment_time": appointment.appointment_time,
+            "notes": appointment.notes,
+            "status": "confirmed",
+            "payment_status": payment_status,
+            "appointment_full_price": appointment.full_price,
+            "appointment_upfront_payment": appointment.upfront_payment,
+            "appointment_facility_address": appointment.facility_address,
+            "appointment_facility_image": appointment.facility_image,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        response = supabase.table("appointments").insert(appointment_data).execute()
+        
+        return {
+            "message": "Appointment created successfully",
+            "appointment_id": response.data[0]["consultation_id"],
+            "payment_status": payment_status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/appointments/{appointment_id}")
+async def get_appointment(
+    appointment_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        user = supabase.table("users").select("user_id").eq("email", current_user).execute().data[0]
+        response = supabase.table("appointments")\
+            .select("*")\
+            .eq("consultation_id", appointment_id)\
+            .eq("user_id", user["user_id"])\
+            .execute()
+            
         if not response.data:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="Appointment not found")
+            
         return response.data[0]
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error retrieving user data")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Admin - Update user info (admin side)
-@app.put("/admin/user/{user_id}")
-async def update_user(user_id: int, user_update: UserUpdate, current_user: str = Depends(is_admin)):
-    response = supabase.table("users").select("*").eq("user_id", user_id).execute()
-    if not response.data:
-        raise HTTPException(status_code=404, detail="User not found")
+@app.put("/appointments/{appointment_id}/cancel")
+async def cancel_appointment(
+    appointment_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        user = supabase.table("users").select("user_id").eq("email", current_user).execute().data[0]
+        
+        # Verify appointment belongs to user
+        appointment = supabase.table("appointments")\
+            .select("*")\
+            .eq("consultation_id", appointment_id)\
+            .eq("user_id", user["user_id"])\
+            .execute()
+            
+        if not appointment.data:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+            
+        supabase.table("appointments")\
+            .update({"status": "cancelled"})\
+            .eq("consultation_id", appointment_id)\
+            .execute()
+            
+        return {"message": "Appointment cancelled"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    updated_data = {
-        "full_name": user_update.full_name,
-        "gender": user_update.gender,
-        "date_of_birth": user_update.dob,
-        "phone_number": user_update.phone,
-    }
+# ====== SCAN ROUTES ======
+@app.post("/scans")
+async def upload_scan(
+    file: UploadFile = File(...),
+    scan_type: str = Form(...),
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        user = supabase.table("users").select("user_id").eq("email", current_user).execute().data[0]
+        
+        # Store file in Supabase Storage
+        file_content = await file.read()
+        file_path = f"scans/{user['user_id']}/{datetime.now().timestamp()}_{file.filename}"
+        
+        supabase.storage().from_("scans").upload(file_path, file_content)
+        
+        # Store metadata
+        scan_data = {
+            "user_id": user["user_id"],
+            "scan_type": scan_type,
+            "file_path": file_path,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        response = supabase.table("scans").insert(scan_data).execute()
+        
+        return {
+            "message": "Scan uploaded successfully",
+            "scan_id": response.data[0]["scan_id"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # Update user data in database
-    update_response = supabase.table("users").update(updated_data).eq("user_id", user_id).execute()
-    if update_response.error:
-        raise HTTPException(status_code=400, detail="Failed to update user info")
+@app.get("/patient/scans")
+async def get_patient_scans(current_user: str = Depends(get_current_user)):
+    try:
+        user = supabase.table("users").select("user_id").eq("email", current_user).execute().data[0]
+        scans = supabase.table("scans")\
+            .select("*")\
+            .eq("user_id", user["user_id"])\
+            .execute()
+            
+        return {"scans": scans.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {"message": "User info updated successfully."}
-
-# Admin - Create consultation (appointment)
-@app.post("/admin/consultations")
-async def create_appointment(consultation_data: dict, current_user: str = Depends(is_admin)):
-    response = supabase.table("consultations").insert(consultation_data).execute()
-
-    if response.error:
-        raise HTTPException(status_code=400, detail="Failed to create consultation")
-
-    return {"message": "Consultation created successfully."}
-
-# Admin - Manage scans (add or update scans)
-@app.post("/admin/scans")
-async def add_scan(scan_data: dict, current_user: str = Depends(is_admin)):
-    response = supabase.table("scans").insert(scan_data).execute()
-
-    if response.error:
-        raise HTTPException(status_code=400, detail="Failed to add scan")
-
-    return {"message": "Scan added successfully."}
-
-# Admin - Update scan data
-@app.put("/admin/scans/{scan_id}")
-async def update_scan(scan_id: int, scan_data: dict, current_user: str = Depends(is_admin)):
-    response = supabase.table("scans").update(scan_data).eq("scan_id", scan_id).execute()
-
-    if response.error:
-        raise HTTPException(status_code=400, detail="Failed to update scan")
-
-    return {"message": "Scan updated successfully."}
-
-# Admin - Get all users (for admin dashboard)
+# ====== ADMIN ROUTES ======
 @app.get("/admin/users")
 async def get_users(current_user: str = Depends(is_admin)):
-    response = supabase.table("users").select("*").execute()
-    if response.error:
-        raise HTTPException(status_code=400, detail="Failed to retrieve users")
+    try:
+        users = supabase.table("users").select("*").execute()
+        return {"users": users.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {"users": response.data}
+@app.put("/admin/user/{user_id}")
+async def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    current_user: str = Depends(is_admin)
+):
+    try:
+        supabase.table("users")\
+            .update({
+                "full_name": user_update.full_name,
+                "gender": user_update.gender,
+                "date_of_birth": user_update.dob,
+                "phone_number": user_update.phone
+            })\
+            .eq("user_id", user_id)\
+            .execute()
+            
+        return {"message": "User updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Admin - Get consultations
-@app.get("/admin/consultations")
-async def get_consultations(current_user: str = Depends(is_admin)):
-    response = supabase.table("consultations").select("*").execute()
-    if response.error:
-        raise HTTPException(status_code=400, detail="Failed to retrieve consultations")
+@app.delete("/admin/user/{user_id}")
+async def delete_user(
+    user_id: int,
+    current_user: str = Depends(is_admin)
+):
+    try:
+        supabase.table("users").delete().eq("user_id", user_id).execute()
+        return {"message": "User deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {"consultations": response.data}
+@app.get("/admin/appointments")
+async def get_all_appointments(current_user: str = Depends(is_admin)):
+    try:
+        appointments = supabase.table("appointments").select("*").execute()
+        return {"appointments": appointments.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Admin - Get scans
 @app.get("/admin/scans")
-async def get_scans(current_user: str = Depends(is_admin)):
-    response = supabase.table("scans").select("*").execute()
-    if response.error:
-        raise HTTPException(status_code=400, detail="Failed to retrieve scans")
-
-    return {"scans": response.data}
+async def get_all_scans(current_user: str = Depends(is_admin)):
+    try:
+        scans = supabase.table("scans").select("*").execute()
+        return {"scans": scans.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
