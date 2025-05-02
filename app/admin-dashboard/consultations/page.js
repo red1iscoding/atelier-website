@@ -1,122 +1,131 @@
 'use client';
 
-import Navbar from '../Navbar';  // Importing Navbar
-import { useState, useEffect } from 'react';  // Import useState and useEffect hooks
-import { FaSearch, FaEye, FaEdit, FaTimes } from 'react-icons/fa';  // Icons
+import Navbar from '../Navbar';
+import { useState, useEffect } from 'react';
+import { FaSearch, FaEye, FaEdit, FaTimes, FaMoneyBillWave } from 'react-icons/fa';
+import { supabase } from '../../../lib/supabase';
 
-const Consultations = () => {
-  const [consultations, setConsultations] = useState([]);
+const Appointments = () => {
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
-  const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [newDate, setNewDate] = useState('');
-  const [isClient, setIsClient] = useState(false);  // Add state to check if it's client-side
+  const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    setIsClient(true);  // Set true once the component is mounted on the client side
-  }, []);
-
-  // Function to fetch consultations from the backend (FastAPI route)
-  useEffect(() => {
-    if (isClient) {  // Only fetch consultations after the component is mounted on the client side
-      fetchConsultations();
-    }
-  }, [isClient]);
-
-  const fetchConsultations = async () => {
+  // Fetch appointments from Supabase
+  const fetchAppointments = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/admin/consultations', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,  // Send the token with the request
-        },
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setConsultations(data.consultations);
-      } else {
-        console.error('Error fetching consultations:', data);
+      let query = supabase
+        .from('appointments')
+        .select('*, users(full_name, email)')
+        .order('appointment_date', { ascending: true });
+
+      if (searchTerm) {
+        query = query.or(
+          `users.full_name.ilike.%${searchTerm}%,users.email.ilike.%${searchTerm}%,facility.ilike.%${searchTerm}%`
+        );
       }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setAppointments(data || []);
     } catch (error) {
-      console.error('Error fetching consultations:', error);
+      console.error('Error fetching appointments:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReschedule = (consultationId, currentDate) => {
+  useEffect(() => {
+    fetchAppointments();
+  }, [searchTerm]);
+
+  const handleReschedule = (appointment) => {
     setIsRescheduling(true);
-    setSelectedConsultation(consultationId);
-    setNewDate(currentDate);  // Pre-fill the date input with the current date
+    setSelectedAppointment(appointment);
+    setNewDate(appointment.appointment_date);
   };
 
   const handleDateChange = (e) => {
     setNewDate(e.target.value);
   };
 
-  const saveReschedule = () => {
-    // Send the PUT request to update the consultation date
-    fetch(`http://127.0.0.1:8000/admin/consultations/${selectedConsultation}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,  // Send the token with the request
-      },
-      body: JSON.stringify({ date: newDate }),  // Pass the updated date in the body
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.message === 'Consultation updated successfully.') {
-          setConsultations(prevConsultations =>
-            prevConsultations.map(consultation =>
-              consultation.consultationId === selectedConsultation
-                ? { ...consultation, date: newDate }
-                : consultation
-            )
-          );
-        }
-        setIsRescheduling(false);
-        setSelectedConsultation(null);
-      })
-      .catch((err) => console.error('Error rescheduling consultation:', err));
+  const saveReschedule = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ 
+          appointment_date: newDate,
+          appointment_updated_at: new Date().toISOString()
+        })
+        .eq('consultation_id', selectedAppointment.consultation_id);
+
+      if (error) throw error;
+      fetchAppointments();
+      setIsRescheduling(false);
+      setSelectedAppointment(null);
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+    }
   };
 
-  const handleCancel = (consultationId) => {
-    // Send DELETE request to cancel the consultation
-    fetch(`http://127.0.0.1:8000/admin/consultations/${consultationId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,  // Send the token with the request
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.message === 'Consultation canceled successfully.') {
-          setConsultations((prevConsultations) =>
-            prevConsultations.filter(
-              (consultation) => consultation.consultationId !== consultationId
-            )
-          );
-        }
-      })
-      .catch((err) => console.error('Error canceling consultation:', err));
+  const handleCancel = async (appointmentId) => {
+    if (confirm('Are you sure you want to cancel this appointment?')) {
+      try {
+        const { error } = await supabase
+          .from('appointments')
+          .update({ 
+            status: 'cancelled',
+            appointment_updated_at: new Date().toISOString()
+          })
+          .eq('consultation_id', appointmentId);
+
+        if (error) throw error;
+        fetchAppointments();
+      } catch (error) {
+        console.error('Error canceling appointment:', error);
+      }
+    }
   };
 
-  const handleViewDetails = (consultationId) => {
-    // Set the consultation that needs to be viewed
-    const consultation = consultations.find(c => c.consultationId === consultationId);
-    setSelectedConsultation(consultation);
-    setIsViewing(true);  // Show the modal
+  const handleViewDetails = (appointment) => {
+    setSelectedAppointment(appointment);
+    setIsViewing(true);
   };
 
   const closeViewModal = () => {
     setIsViewing(false);
-    setSelectedConsultation(null);  // Clear the selected consultation
+    setSelectedAppointment(null);
   };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('ar-DZ', {  // Changed to Algerian locale
+      style: 'currency',
+      currency: 'DZD',
+      minimumFractionDigits: 0,  // Dinar typically doesn't use fractions
+      maximumFractionDigits: 0
+    }).format(amount || 0);
+  };
+  if (loading) return (
+    <div className="flex flex-col min-h-screen dark:bg-gray-900 dark:text-white">
+      <Navbar />
+      <div className="flex-1 p-6 mt-20 flex justify-center items-center">
+        <p>Loading appointments...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col min-h-screen dark:bg-gray-900 dark:text-white">
       <Navbar />
       <div className="flex-1 p-6 mt-20">
-        <h2 className="text-3xl font-semibold mb-6">Consultations</h2>
+        <h2 className="text-3xl font-semibold mb-6">Appointments Management</h2>
 
         {/* Search Bar Section */}
         <div className="flex justify-between mb-4">
@@ -124,56 +133,96 @@ const Consultations = () => {
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="Search consultations..."
+                placeholder="Search appointments..."
                 className="w-full p-3 pl-10 pr-4 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all duration-300"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
               <FaSearch className="absolute left-3 top-3 text-gray-400" />
             </div>
           </div>
         </div>
 
-        {/* Consultations Table */}
-        <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg">
+        {/* Appointments Table */}
+        <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded shadow-lg overflow-x-auto">
           <table className="min-w-full table-auto">
             <thead className="bg-gray-700 dark:bg-gray-800">
               <tr>
-                <th className="p-4 text-left text-white">Consultation ID</th>
+                <th className="p-4 text-left text-white">ID</th>
                 <th className="p-4 text-left text-white">Patient</th>
-                <th className="p-4 text-left text-white">Date</th>
+                <th className="p-4 text-left text-white">Date & Time</th>
                 <th className="p-4 text-left text-white">Type</th>
+                <th className="p-4 text-left text-white">Facility</th>
+                <th className="p-4 text-left text-white">Price</th>
                 <th className="p-4 text-left text-white">Status</th>
                 <th className="p-4 text-left text-white">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {consultations.map((consultation) => (
-                <tr key={consultation.id} className="hover:bg-gray-700 dark:hover:bg-gray-800 transition-all duration-300">
-                  <td className="p-4 text-white">{consultation.consultationId}</td>
-                  <td className="p-4 text-white">{consultation.patient}</td>
-                  <td className="p-4 text-white">{consultation.date}</td>
-                  <td className="p-4 text-white">{consultation.type}</td>
-                  <td className={`p-4 ${consultation.status === 'Completed' ? 'text-green-500' : 'text-yellow-500'}`}>{consultation.status}</td>
+              {appointments.map((appointment) => (
+                <tr key={appointment.consultation_id} className="hover:bg-gray-700 dark:hover:bg-gray-800 transition-all duration-300">
+                  <td className="p-4 text-white">{appointment.consultation_id}</td>
+                  <td className="p-4 text-white">
+                    <div className="font-medium">{appointment.users?.full_name}</div>
+                    <div className="text-sm text-gray-400">{appointment.users?.email}</div>
+                  </td>
+                  <td className="p-4 text-white">
+                    {new Date(appointment.appointment_date).toLocaleDateString()}
+                    <div className="text-sm text-gray-400">
+                      {new Date(appointment.appointment_date).toLocaleTimeString()}
+                    </div>
+                  </td>
+                  <td className="p-4 text-white capitalize">
+                    {appointment.appointment_type?.replace('_', ' ')}
+                  </td>
+                  <td className="p-4 text-white">
+                    {appointment.facility || 'N/A'}
+                    {appointment.appointment_facility_address && (
+                      <div className="text-sm text-gray-400">
+                        {appointment.appointment_facility_address}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4 text-white">
+  <div className="flex items-center gap-1">
+    <FaMoneyBillWave className="text-green-400" />
+    {formatCurrency(appointment.appointment_full_price)} DZD {/* Added DZD suffix */}
+  </div>
+  {appointment.appointment_upfront_payment > 0 && (
+    <div className="text-sm text-gray-400">
+      Paid: {formatCurrency(appointment.appointment_upfront_payment)} DZD {/* Added DZD suffix */}
+    </div>
+  )}
+</td>
+                  <td className={`p-4 ${
+                    appointment.status === 'completed' ? 'text-green-500' :
+                    appointment.status === 'cancelled' ? 'text-red-500' : 'text-yellow-500'
+                  }`}>
+                    <span className="capitalize">{appointment.status}</span>
+                  </td>
                   <td className="p-4 flex gap-2">
                     <button
-                      className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition-all duration-300 w-24"
-                      onClick={() => handleViewDetails(consultation.consultationId)} // On click, show the modal with details
+                      className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition-all duration-300"
+                      onClick={() => handleViewDetails(appointment)}
                       title="View"
                     >
-                      <FaEye /> View
+                      <FaEye />
                     </button>
                     <button
-                      onClick={() => handleReschedule(consultation.consultationId, consultation.date)}
-                      className="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition-all duration-300 w-24"
+                      onClick={() => handleReschedule(appointment)}
+                      className="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition-all duration-300"
                       title="Reschedule"
+                      disabled={appointment.status === 'completed' || appointment.status === 'cancelled'}
                     >
-                      <FaEdit /> Reschedule
+                      <FaEdit />
                     </button>
                     <button
-                      onClick={() => handleCancel(consultation.consultationId)}
-                      className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-all duration-300 w-24"
+                      onClick={() => handleCancel(appointment.consultation_id)}
+                      className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-all duration-300"
                       title="Cancel"
+                      disabled={appointment.status === 'completed' || appointment.status === 'cancelled'}
                     >
-                      <FaTimes /> Cancel
+                      <FaTimes />
                     </button>
                   </td>
                 </tr>
@@ -182,43 +231,136 @@ const Consultations = () => {
           </table>
         </div>
 
-        {/* Reschedule and View Modals */}
-        {isRescheduling && (
+        {/* Reschedule Modal */}
+        {isRescheduling && selectedAppointment && (
           <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-10">
-            <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-1/2">
-              <h3 className="text-2xl font-semibold text-white mb-4">Reschedule Consultation</h3>
-              <div className="mb-4">
-                <label className="block text-lg font-semibold text-white">New Date:</label>
-                <input
-                  type="date"
-                  value={newDate}
-                  onChange={handleDateChange}
-                  className="p-2 w-full bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
+            <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+              <h3 className="text-2xl font-semibold text-white mb-4">Reschedule Appointment</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Patient</label>
+                  <div className="p-2 bg-gray-800 rounded text-white">
+                    {selectedAppointment.users?.full_name}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Current Date</label>
+                  <div className="p-2 bg-gray-800 rounded text-white">
+                    {new Date(selectedAppointment.appointment_date).toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">New Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={newDate}
+                    onChange={handleDateChange}
+                    className="p-2 w-full bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
               </div>
-              <div className="flex justify-end gap-4 mt-4">
-                <button onClick={() => setIsRescheduling(false)} className="bg-gray-500 text-white p-2 rounded hover:bg-gray-600 transition-all duration-300">
+              <div className="flex justify-end gap-4 mt-6">
+                <button 
+                  onClick={() => setIsRescheduling(false)} 
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-all duration-300"
+                >
                   Cancel
                 </button>
-                <button onClick={saveReschedule} className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-all duration-300">
-                  Save
+                <button 
+                  onClick={saveReschedule} 
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-300"
+                >
+                  Confirm Reschedule
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {isViewing && selectedConsultation && (
+        {/* View Details Modal */}
+        {isViewing && selectedAppointment && (
           <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-10">
-            <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-1/2">
-              <h3 className="text-2xl font-semibold text-white mb-4">Consultation Details</h3>
-              <p className="text-white"><strong>Consultation ID:</strong> {selectedConsultation.consultationId}</p>
-              <p className="text-white"><strong>Patient:</strong> {selectedConsultation.patient}</p>
-              <p className="text-white"><strong>Date:</strong> {selectedConsultation.date}</p>
-              <p className="text-white"><strong>Type:</strong> {selectedConsultation.type}</p>
-              <p className="text-white"><strong>Status:</strong> {selectedConsultation.status}</p>
-              <div className="flex justify-end gap-4 mt-4">
-                <button onClick={closeViewModal} className="bg-gray-500 text-white p-2 rounded hover:bg-gray-600 transition-all duration-300">
+            <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-2xl">
+              <h3 className="text-2xl font-semibold text-white mb-4">Appointment Details</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Appointment ID</p>
+                    <p className="text-white font-medium">{selectedAppointment.consultation_id}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Patient</p>
+                    <p className="text-white font-medium">{selectedAppointment.users?.full_name}</p>
+                    <p className="text-gray-400 text-sm">{selectedAppointment.users?.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Scheduled Date</p>
+                    <p className="text-white">
+                      {new Date(selectedAppointment.appointment_date).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Appointment Type</p>
+                    <p className="text-white capitalize">
+                      {selectedAppointment.appointment_type?.replace('_', ' ')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Facility</p>
+                    <p className="text-white">{selectedAppointment.facility || 'N/A'}</p>
+                    {selectedAppointment.appointment_facility_address && (
+                      <p className="text-gray-400 text-sm">
+                        {selectedAppointment.appointment_facility_address}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Status</p>
+                    <p className={`capitalize ${
+                      selectedAppointment.status === 'completed' ? 'text-green-500' :
+                      selectedAppointment.status === 'cancelled' ? 'text-red-500' : 'text-yellow-500'
+                    }`}>
+                      {selectedAppointment.status}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-400 mb-1">Full Price</p>
+                      <p className="text-white font-medium">
+                        {formatCurrency(selectedAppointment.appointment_full_price)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400 mb-1">Upfront Payment</p>
+                      <p className="text-white">
+                        {formatCurrency(selectedAppointment.appointment_upfront_payment)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {selectedAppointment.notes && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-1">Notes</p>
+                      <p className="text-white bg-gray-800 p-3 rounded">
+                        {selectedAppointment.notes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button 
+                  onClick={closeViewModal} 
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-all duration-300"
+                >
                   Close
                 </button>
               </div>
@@ -228,15 +370,11 @@ const Consultations = () => {
 
         {/* Pagination Section */}
         <div className="flex justify-between items-center mt-4">
-          <span className="text-white">Showing 1 to 10 of 100 consultations</span>
-          <div>
-            <button className="bg-gray-700 text-white px-4 py-2 rounded-l-md hover:bg-gray-800 transition-all duration-300">Previous</button>
-            <button className="bg-gray-700 text-white px-4 py-2 rounded-r-md hover:bg-gray-800 transition-all duration-300">Next</button>
-          </div>
+          <span className="text-white">Showing {appointments.length} appointments</span>
         </div>
       </div>
     </div>
   );
 };
 
-export default Consultations;
+export default Appointments;

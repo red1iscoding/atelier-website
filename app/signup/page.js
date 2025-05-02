@@ -1,10 +1,12 @@
-'use client'; // This ensures it's a client-side component
+'use client';
 
 import { useState } from 'react';
-import Navbar from '../../components/Navbar'; // Import Navbar component
-import { useRouter } from 'next/navigation'; // For redirection after successful signup
+import Navbar from '../../components/Navbar';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 
 export default function SignUp() {
+  // Keep all your existing state variables
   const [fullName, setFullName] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
@@ -16,7 +18,7 @@ export default function SignUp() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter(); // Used for navigation
+  const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,44 +35,55 @@ export default function SignUp() {
       return;
     }
 
-    // Set loading state while submitting
     setLoading(true);
     setError('');
 
-    // Prepare the data to send to the backend
-    const userData = {
-      full_name: fullName,
-      gender: gender,
-      dob: dob,
-      email: email,
-      phone: phone,
-      password: password,
-      subscription_plan: subscription,
-    };
-
     try {
-      const response = await fetch('http://127.0.0.1:8000/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
+      // 1. Check if email already exists
+      const { data: existingUser, error: lookupError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .single();
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Redirect the user to the login page after successful signup
-        alert('Sign-up successful!');
-        router.push('/login');  // Redirect to the login page
-      } else {
-        setError(data.detail || 'Signup failed, please try again.');
+      if (existingUser) {
+        throw new Error('This email is already registered');
       }
+
+      // 2. Insert directly into users table
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([{
+          email,
+          password, // Note: In production, hash this password first!
+          full_name: fullName,
+          gender,
+          date_of_birth: dob,
+          phone_number: phone,
+          subscription_plan: subscription,
+          role: 'patient',
+          status: 'active',
+          created_at: new Date().toISOString()
+        }]);
+
+      if (insertError) throw insertError;
+
+      // 3. "Login" by storing user identifier
+      sessionStorage.setItem('user_email', email);
+      
+      // Redirect to dashboard
+      router.push('/dashboard');
+
     } catch (err) {
-      // Handle any error that occurs during the fetch call
-      setError('An error occurred during signup');
+      setError(err.message || 'An error occurred during signup');
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false);
     }
   };
+
+
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center"

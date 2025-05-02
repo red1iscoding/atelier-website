@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Add useEffect
 import { useRouter } from 'next/navigation';
 import { FaCalendarAlt, FaUserMd, FaVideo, FaArrowLeft } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
@@ -14,6 +14,10 @@ const CreateAppointment = () => {
   const [time, setTime] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false); // Track client-side
+
+
+
 
   const facilities = [
     { 
@@ -42,6 +46,10 @@ const CreateAppointment = () => {
 
 
 
+ useEffect(() => {
+    setIsClient(true); // Set to true when component mounts on client
+  }, []);
+
   const handlePay = () => {
     if (!consultationType || !facility || !date || !time) {
       setErrorMessage('Please fill in all fields.');
@@ -60,10 +68,20 @@ const CreateAppointment = () => {
     }
   
     setIsLoading(true);
+
+    // Only access localStorage on client side
+    const userId = localStorage.getItem("user_id") || sessionStorage.getItem("user_id");
   
-    // Generate random price between 4000 and 10000 DZD
-    const fullPrice = Math.floor(Math.random() * (10000 - 4000 + 1)) + 4000;
-    const upfrontPayment = Math.round(fullPrice * 0.2); // 20% upfront
+    if (!userId) {
+      setErrorMessage('Please login to book an appointment');
+      setIsLoading(false);
+      router.push('/login');
+      return;
+    }
+  
+    // Generate random price - moved to client-side only
+    const fullPrice = isClient ? Math.floor(Math.random() * (10000 - 4000 + 1)) + 4000 : 0;
+    const upfrontPayment = isClient ? Math.round(fullPrice * 0.2) : 0;
   
     const appointmentDetails = {
       consultationType,
@@ -74,17 +92,27 @@ const CreateAppointment = () => {
       facilityImage: facilities.find(f => f.name === facility)?.image || '',
       fullPrice,
       upfrontPayment,
-      userId: localStorage.getItem("user_id") || null
+      userId
     };
   
-    // Pass details to payment page
+    if (!appointmentDetails.userId) {
+      setErrorMessage('User session expired. Please login again.');
+      setIsLoading(false);
+      return;
+    }
+  
     const encodedDetails = encodeURIComponent(JSON.stringify(appointmentDetails));
     router.push(`/payment?details=${encodedDetails}`);
     setIsLoading(false);
   };
 
+  // Render nothing during SSR
+  if (!isClient) return null;
 
 
+
+
+  
 
   
   return (
