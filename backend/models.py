@@ -5,13 +5,16 @@ from datetime import datetime
 
 # Model for creating a new user
 class UserCreate(BaseModel):
+    email: str
+    password: str
     full_name: str
     gender: str
-    dob: str  # Date of birth (use datetime type if you want to enforce a date format)
-    email: str
+    dob: str  # Date of Birth
     phone: str
-    password: str
-    subscription_plan: str
+    subscription_plan: str = "basic"  # Default subscription plan for new users
+    payment_status: str = "pending"  # Default payment status
+    unlimited_scans: bool = False  # Default unlimited_scans
+
 
 # Model for logging in a user
 class UserLogin(BaseModel):

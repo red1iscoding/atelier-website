@@ -33,9 +33,9 @@ export default function Navbar() {
           <Link href="/" className={`text-gray-600 hover:text-gray-800 ${isHomePage ? 'text-[#003366]' : ''}`}>
             Home
           </Link>
-          <a href="#features" className="text-gray-600 hover:text-gray-800">Features</a>
-          <a href="#about" className="text-gray-600 hover:text-gray-800">About</a>
-          <a href="#faq" className="text-gray-600 hover:text-gray-800">F.A.Q.</a>
+          <a href="/features" className="text-gray-600 hover:text-gray-800">Features</a>
+          <a href="/about" className="text-gray-600 hover:text-gray-800">About</a>
+          <a href="/faq" className="text-gray-600 hover:text-gray-800">F.A.Q.</a>
         </nav>
 
         {/* Login / Sign Up Buttons */}
@@ -55,9 +55,9 @@ export default function Navbar() {
           <Link href="/" className={`text-gray-600 hover:text-gray-800 ${isHomePage ? 'text-[#003366]' : ''}`}>
             Home
           </Link>
-          <a href="#features" className="text-gray-600 hover:text-gray-800 py-2">Features</a>
-          <a href="#about" className="text-gray-600 hover:text-gray-800 py-2">About</a>
-          <a href="#faq" className="text-gray-600 hover:text-gray-800 py-2">F.A.Q.</a>
+          <a href="/features" className="text-gray-600 hover:text-gray-800 py-2">Features</a>
+          <a href="#/about" className="text-gray-600 hover:text-gray-800 py-2">About</a>
+          <a href="/faq" className="text-gray-600 hover:text-gray-800 py-2">F.A.Q.</a>
         </nav>
       </div>
     </header>
