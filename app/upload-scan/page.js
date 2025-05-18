@@ -6,7 +6,6 @@ import Sidebar from "../../components/Sidebar";
 import { useRouter } from 'next/navigation';
 
 const UploadScanPage = () => {
-    const [uploadSuccess, setUploadSuccess] = useState(false);
     const [file, setFile] = useState(null);
     const [scanType, setScanType] = useState('xray');
     const [loading, setLoading] = useState(false);
@@ -15,27 +14,29 @@ const UploadScanPage = () => {
     const [userProfile, setUserProfile] = useState(null);
     const router = useRouter();
 
-    // Check user profile on component mount
     useEffect(() => {
         const checkUserProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                router.push('/login');
-                return;
-            }
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                if (authError || !user) {
+                    router.push('/login');
+                    return;
+                }
 
-            const { data: profile, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('auth_id', user.id)
-                .single();
+                const { data: profile, error: profileError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('auth_id', user.id)
+                    .single();
 
-            if (error || !profile) {
-                setError('Please complete your profile before uploading scans');
-                // Alternatively, you could redirect to profile completion
-                // router.push('/complete-profile');
-            } else {
-                setUserProfile(profile);
+                if (profileError || !profile) {
+                    setError('Please complete your profile before uploading scans');
+                } else {
+                    setUserProfile(profile);
+                }
+            } catch (err) {
+                console.error('Profile check error:', err);
+                setError('Failed to verify user profile');
             }
         };
 
@@ -43,7 +44,24 @@ const UploadScanPage = () => {
     }, [router]);
 
     const handleFileChange = (e) => {
-        // ... (keep existing file change handler)
+        const selectedFile = e.target.files[0];
+        if (!selectedFile) return;
+
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        if (!validTypes.includes(selectedFile.type)) {
+            setError('Invalid file type. Please upload JPG, PNG, or PDF files only.');
+            return;
+        }
+
+        // Validate file size (50MB max)
+        if (selectedFile.size > 50 * 1024 * 1024) {
+            setError('File size too large. Maximum 50MB allowed.');
+            return;
+        }
+
+        setFile(selectedFile);
+        setError(null);
     };
 
     const handleSubmit = async (e) => {
@@ -53,51 +71,63 @@ const UploadScanPage = () => {
             setError('Please complete your profile before uploading scans');
             return;
         }
-
+    
         setLoading(true);
         setError(null);
-
+        setSuccessMessage('');
+    
         try {
-            // Get current user (already verified in useEffect)
-            const { data: { user } } = await supabase.auth.getUser();
-
-            // Upload file to storage
+            // Get authenticated user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) throw new Error('Authentication failed');
+    
+            // Get the full user profile again to be sure we have the correct ID
+            const { data: currentUserProfile, error: profileError } = await supabase
+                .from('users')
+                .select('user_id')
+                .eq('auth_id', user.id)
+                .single();
+    
+            if (profileError || !currentUserProfile) throw new Error('User profile not found');
+    
+            // Generate unique filename
             const fileExt = file.name.split('.').pop();
             const fileName = `${user.id}-${Date.now()}.${fileExt}`;
             const filePath = `user-uploads/${user.id}/${fileName}`;
-
+    
+            // Upload file to storage
             const { error: uploadError } = await supabase.storage
                 .from('medical-scans')
                 .upload(filePath, file);
-
+    
             if (uploadError) throw uploadError;
-
-            // Create record in scans table
+    
+            // Create record in scans table - USING THE CORRECT user_id
             const { error: dbError } = await supabase
                 .from('scans')
-                .insert({
-                    user_id: userProfile.user_id, // Use the integer ID from profile
+                .insert([{
+                    user_id: currentUserProfile.user_id, // Use the user_id from profile
                     scan_type: scanType,
                     file_name: file.name,
                     file_path: filePath,
                     file_type: file.type,
-                    status: 'pending_review'
-                });
-
+                    diagnosis_status: 'pending',
+                    status: 'pending_review',
+                    created_at: new Date().toISOString()
+                }]);
+    
             if (dbError) throw dbError;
-
-            setUploadSuccess(true);
-            setSuccessMessage('Scan uploaded successfully!');
+    
+            setSuccessMessage('Scan uploaded successfully! Our team will review it shortly.');
             setFile(null);
             
         } catch (err) {
             console.error('Upload error:', err);
             setError(err.message || 'Upload failed. Please try again.');
             
-            // Clean up failed upload
-            if (file) {
+            // Clean up failed upload if we got far enough to have a filePath
+            if (filePath) {
                 try {
-                    const filePath = `user-uploads/${user.id}/${file.name}`;
                     await supabase.storage.from('medical-scans').remove([filePath]);
                 } catch (cleanupError) {
                     console.error('Cleanup error:', cleanupError);
@@ -132,10 +162,7 @@ const UploadScanPage = () => {
 
     return (
         <div className="flex min-h-screen bg-white">
-            {/* Sidebar Component */}
             <Sidebar />
-
-            {/* Main Content Area */}
             <div className="flex-1 p-8">
                 <h1 className="text-4xl font-semibold text-[#003366] mb-4">Upload Your Scan</h1>
                 <p className="text-lg text-gray-700 mb-8">
@@ -157,7 +184,6 @@ const UploadScanPage = () => {
 
                 <div className="bg-white p-8 rounded-lg shadow-lg border border-gray-300">
                     <form onSubmit={handleSubmit}>
-                        {/* File Upload Section */}
                         <div className="mb-8">
                             <h2 className="text-xl font-semibold text-[#003366] mb-4">1. Select Scan File</h2>
                             <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
@@ -208,7 +234,6 @@ const UploadScanPage = () => {
                             </div>
                         </div>
 
-                        {/* Scan Details Section */}
                         <div className="mb-8">
                             <h2 className="text-xl font-semibold text-[#003366] mb-4">2. Scan Details</h2>
                             <div className="space-y-4">
@@ -231,7 +256,6 @@ const UploadScanPage = () => {
                                     </select>
                                 </div>
                                 
-                                {/* Additional fields can be added here */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Notes (Optional)
@@ -244,7 +268,6 @@ const UploadScanPage = () => {
                             </div>
                         </div>
 
-                        {/* Submit Button */}
                         <div className="flex justify-end">
                             <button
                                 type="submit"

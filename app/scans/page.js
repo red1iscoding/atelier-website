@@ -1,270 +1,368 @@
-'use client'
-import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+'use client';
+import { useState } from 'react';
+import { loadModel, predict } from '../../lib/model/predict';
 
-export default function PatientScans() {
-  const [scans, setScans] = useState([])
-  const [selectedScan, setSelectedScan] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [timeoutReached, setTimeoutReached] = useState(false)
+export default function TestModel() {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [result, setResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Set a timeout to prevent infinite loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) {
-        setTimeoutReached(true)
-        setError({
-          type: 'TIMEOUT_ERROR',
-          message: 'Loading is taking longer than expected',
-          details: 'Please check your internet connection',
-          action: 'retry'
-        })
-        setLoading(false)
-      }
-    }, 10000) // 10 second timeout
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPreview(URL.createObjectURL(selectedFile));
+      setResult(null);
+      setError(null);
+    }
+  };
 
-    return () => clearTimeout(timer)
-  }, [loading])
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) return;
 
-  // Fetch scans with comprehensive error handling
-  const fetchScans = async () => {
-    setLoading(true)
-    setError(null)
-    setTimeoutReached(false)
+    setIsLoading(true);
+    setError(null);
     
     try {
-      // 1. Get authenticated user
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError) throw authError
+      const session = await loadModel();
+      const imageElement = document.createElement('img');
+      imageElement.src = preview;
+      await new Promise((resolve) => { imageElement.onload = resolve; });
 
-      // 2. Get the integer user_id from users table
-      const { data: appUser, error: userError } = await supabase
-        .from('users')
-        .select('user_id')
-        .eq('auth_id', user.id)
-        .maybeSingle()
-
-      if (userError || !appUser) {
-        throw new Error('User account not properly linked')
+      const prediction = await predict(session, imageElement);
+      
+      if (!prediction.isValid) {
+        throw new Error(prediction.error || "Invalid prediction results");
       }
 
-      // 3. Fetch scans with proper timeout
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000) // 8 second timeout for fetch
-
-      const { data, error: fetchError } = await supabase
-        .from('scans')
-        .select(`
-          scan_id,
-          scan_type,
-          file_name,
-          file_path,
-          file_type,
-          created_at,
-          status
-        `)
-        .eq('user_id', appUser.user_id)
-        .order('created_at', { ascending: false })
-        .abortSignal(controller.signal)
-
-      clearTimeout(timeout)
-
-      if (fetchError) throw fetchError
-      setScans(data || [])
-
+      setResult({
+        ...prediction,
+        diagnosis: getDiagnosis(prediction.probabilities),
+        confidence: getConfidence(prediction.probabilities)
+      });
+      
     } catch (err) {
-      console.error('Fetch error:', err)
-      setError({
-        type: err.name === 'AbortError' ? 'TIMEOUT_ERROR' : 'DATABASE_ERROR',
-        message: err.name === 'AbortError' 
-          ? 'Request timed out' 
-          : 'Failed to load scans',
-        details: err.message,
-        action: 'retry'
-      })
+      console.error("Prediction error:", err);
+      setError(err.message || "Failed to analyze image");
+      setResult(null);
     } finally {
-      setLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  useEffect(() => {
-    fetchScans()
-  }, [])
+  // Helper functions for safe data access
+  const getDiagnosis = (probabilities = {}) => {
+    if (!probabilities) return "Unknown";
+    const { normal = 0, pneumonia = 0, cancer = 0 } = probabilities;
+    const max = Math.max(normal, pneumonia, cancer);
+    
+    if (max === normal) return "Normal";
+    if (max === pneumonia) return "Pneumonia";
+    return "Lung Cancer";
+  };
 
-  if (loading && !timeoutReached) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-        <p>Loading your scans...</p>
-        <p className="text-sm text-gray-500 mt-2">This should only take a moment</p>
-      </div>
-    )
-  }
+  const getConfidence = (probabilities = {}) => {
+    const { normal = 0, pneumonia = 0, cancer = 0 } = probabilities;
+    return Math.max(normal, pneumonia, cancer);
+  };
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded max-w-2xl mx-auto">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">{error.message}</h3>
-            <div className="mt-2 text-sm text-red-700">
-              <p>{error.details}</p>
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={fetchScans}
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const getProbability = (condition) => {
+    if (!result?.probabilities) return 0;
+    return (result.probabilities[condition.toLowerCase()] || 0) * 100;
+  };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Your Medical Scans</h1>
-      
-      {scans.length === 0 ? (
-        <div className="text-center py-8">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No scans found</h3>
-          <p className="mt-1 text-sm text-gray-500">You haven't uploaded any scans yet.</p>
-        </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Scan Type
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  File Name
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {scans.map((scan) => (
-                <tr key={scan.scan_id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">
-                    {scan.scan_type?.replace('_', ' ')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {scan.file_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(scan.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      scan.status === 'processed' ? 'bg-green-100 text-green-800' :
-                      scan.status === 'pending_review' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {scan.status?.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button
-                      onClick={() => setSelectedScan(scan)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Preview
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: 'white',
+      padding: '2rem',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      {/* Header Section */}
+      <header style={{
+        textAlign: 'center',
+        marginBottom: '2rem',
+        borderBottom: '2px solid #003366',
+        paddingBottom: '1rem'
+      }}>
+        <h1 style={{
+          color: '#003366',
+          fontSize: '2.5rem',
+          marginBottom: '0.5rem'
+        }}>Medical X-ray Analysis</h1>
+        <p style={{
+          color: '#666',
+          fontSize: '1.1rem'
+        }}>Upload a chest X-ray to detect pneumonia or lung abnormalities</p>
+      </header>
 
-      {/* Preview Modal */}
-      {selectedScan && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Scan Preview</h2>
-                <button
-                  onClick={() => setSelectedScan(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2rem'
+      }}>
+        {/* Upload Card */}
+        <div style={{
+          backgroundColor: '#f8f9fa',
+          borderRadius: '10px',
+          padding: '2rem',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{
+            color: '#003366',
+            marginTop: 0,
+            marginBottom: '1.5rem',
+            fontSize: '1.5rem'
+          }}>Upload X-ray Image</h2>
+          
+          <form onSubmit={handleSubmit} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.5rem'
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontWeight: '600',
+                color: '#333'
+              }}>
+                Select Image (JPEG/PNG)
+              </label>
+              <div style={{
+                border: '2px dashed #003366',
+                borderRadius: '8px',
+                padding: '2rem',
+                textAlign: 'center',
+                backgroundColor: 'rgba(0, 51, 102, 0.05)',
+                cursor: 'pointer',
+                position: 'relative'
+              }}>
+                <input 
+                  type="file" 
+                  accept="image/png,image/jpeg" 
+                  onChange={handleFileChange}
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    top: 0,
+                    left: 0,
+                    opacity: 0,
+                    cursor: 'pointer'
+                  }}
+                />
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="#003366">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                   </svg>
-                </button>
-              </div>
-
-              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Scan Type</p>
-                  <p className="font-medium capitalize">{selectedScan.scan_type?.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Upload Date</p>
-                  <p className="font-medium">{new Date(selectedScan.created_at).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">File Name</p>
-                  <p className="font-medium">{selectedScan.file_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className={`font-medium capitalize ${
-                    selectedScan.status === 'processed' ? 'text-green-600' :
-                    selectedScan.status === 'pending_review' ? 'text-yellow-600' :
-                    'text-gray-600'
-                  }`}>
-                    {selectedScan.status?.replace('_', ' ')}
+                  <p style={{ margin: 0, color: '#003366' }}>
+                    {file ? file.name : 'Click to browse or drag and drop'}
+                  </p>
+                  <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
+                    Recommended size: 1024x1024 pixels
                   </p>
                 </div>
               </div>
+            </div>
 
-              <div className="border rounded-lg overflow-hidden bg-gray-100">
-                {selectedScan.file_type?.includes('pdf') ? (
-                  <iframe
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/medical-scans/${selectedScan.file_path}`}
-                    className="w-full h-[70vh]"
-                    title="PDF Preview"
-                  />
-                ) : (
-                  <img
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/medical-scans/${selectedScan.file_path}`}
-                    alt="Medical Scan"
-                    className="w-full h-auto max-h-[70vh] object-contain mx-auto"
-                    onError={(e) => {
-                      console.error("Failed to load image")
-                      e.target.src = '/image-error-placeholder.png'
-                    }}
-                  />
-                )}
-              </div>
+            <button
+              type="submit"
+              disabled={isLoading || !file}
+              style={{
+                backgroundColor: '#003366',
+                color: 'white',
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: isLoading ? 'wait' : 'pointer',
+                fontSize: '1rem',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                opacity: isLoading || !file ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              {isLoading ? (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
+                  Analyzing...
+                </>
+              ) : 'Analyze X-ray'}
+            </button>
+          </form>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{
+            backgroundColor: '#fff3e0',
+            borderLeft: '4px solid #ff9800',
+            padding: '1rem',
+            borderRadius: '4px'
+          }}>
+            <p style={{ color: '#d32f2f', margin: 0 }}>
+              <strong>Error:</strong> {error}
+            </p>
+          </div>
+        )}
+
+        {/* Results Section */}
+        {preview && (
+          <div style={{
+            backgroundColor: '#f8f9fa',
+            borderRadius: '10px',
+            padding: '2rem',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{
+              color: '#003366',
+              marginTop: 0,
+              marginBottom: '1.5rem',
+              fontSize: '1.5rem'
+            }}>X-ray Preview</h2>
+            
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              <img 
+                src={preview} 
+                alt="X-ray preview" 
+                style={{ 
+                  maxWidth: '100%',
+                  maxHeight: '400px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              />
+              
+              {result && (
+                <div style={{
+                  width: '100%',
+                  backgroundColor: result.diagnosis === 'Normal' ? '#e8f5e9' : '#ffebee',
+                  borderRadius: '8px',
+                  padding: '1.5rem',
+                  borderLeft: `6px solid ${result.diagnosis === 'Normal' ? '#4CAF50' : '#F44336'}`
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '1rem'
+                  }}>
+                    <h3 style={{
+                      margin: 0,
+                      color: '#003366',
+                      fontSize: '1.3rem'
+                    }}>Analysis Results</h3>
+                    <span style={{
+                      backgroundColor: result.diagnosis === 'Normal' ? '#4CAF50' : '#F44336',
+                      color: 'white',
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      fontSize: '0.9rem',
+                      fontWeight: '600'
+                    }}>
+                      {result.diagnosis}
+                    </span>
+                  </div>
+                  
+                  <div style={{
+                    marginBottom: '1.5rem'
+                  }}>
+                    <p style={{
+                      margin: '0.5rem 0',
+                      fontSize: '1.1rem'
+                    }}>
+                      Confidence: <strong>{result.confidence.toFixed(1)}%</strong>
+                    </p>
+                    <div style={{
+                      height: '8px',
+                      backgroundColor: '#e0e0e0',
+                      borderRadius: '4px',
+                      margin: '0.5rem 0'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${result.confidence}%`,
+                        backgroundColor: result.diagnosis === 'Normal' ? '#4CAF50' : '#F44336',
+                        borderRadius: '4px'
+                      }}></div>
+                    </div>
+                  </div>
+                  
+                  <h4 style={{
+                    margin: '1rem 0',
+                    color: '#003366',
+                    fontSize: '1.1rem'
+                  }}>Detailed Probabilities:</h4>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '1rem'
+                  }}>
+                    {['Normal', 'Pneumonia', 'Cancer'].map((condition) => (
+                      <div key={condition} style={{
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+                      }}>
+                        <p style={{
+                          margin: '0 0 0.5rem 0',
+                          fontWeight: '600',
+                          color: '#333'
+                        }}>{condition}</p>
+                        <p style={{
+                          margin: 0,
+                          fontSize: '1.2rem',
+                          fontWeight: '700',
+                          color: condition === 'Normal' ? '#4CAF50' : 
+                                condition === 'Pneumonia' ? '#FF9800' : '#F44336'
+                        }}>
+                          {getProbability(condition).toFixed(1)}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Footer */}
+      <footer style={{
+        textAlign: 'center',
+        marginTop: '3rem',
+        paddingTop: '1rem',
+        borderTop: '1px solid #eee',
+        color: '#666',
+        fontSize: '0.9rem'
+      }}>
+        <p>Note: This tool is for preliminary analysis only. Always consult a medical professional.</p>
+      </footer>
     </div>
-  )
+  );
 }
