@@ -1,12 +1,10 @@
 'use client';
-
 import { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 
 export default function SignUp() {
-  // Keep all your existing state variables
   const [fullName, setFullName] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
@@ -50,12 +48,12 @@ export default function SignUp() {
         throw new Error('This email is already registered');
       }
 
-      // 2. Insert directly into users table
-      const { error: insertError } = await supabase
+      // 2. Insert directly into users table (with plain text password for demo)
+      const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert([{
           email,
-          password, // Note: In production, hash this password first!
+          password, // Storing plain text password (for demo only)
           full_name: fullName,
           gender,
           date_of_birth: dob,
@@ -64,14 +62,17 @@ export default function SignUp() {
           role: 'patient',
           status: 'active',
           created_at: new Date().toISOString()
-        }]);
+        }])
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
-      // 3. "Login" by storing user identifier
-      sessionStorage.setItem('user_email', email);
+      // 3. Store user info and redirect
+      sessionStorage.setItem('user_email', newUser.email);
+      sessionStorage.setItem('user_id', newUser.user_id);
+      localStorage.setItem('user_id', newUser.user_id);
       
-      // Redirect to dashboard
       router.push('/dashboard');
 
     } catch (err) {
@@ -81,14 +82,10 @@ export default function SignUp() {
     }
   };
 
-
-
-
-
   return (
     <div className="min-h-screen flex items-center justify-center"
       style={{
-        backgroundImage: "url('/signupbg.jpg')",  // Correct path to your image inside the public folder
+        backgroundImage: "url('/signupbg.jpg')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
@@ -103,12 +100,12 @@ export default function SignUp() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(255, 255, 255, 0.6)', // Adjust opacity to control image visibility
-          zIndex: -1, // To place the gradient behind the content
+          background: 'rgba(255, 255, 255, 0.6)',
+          zIndex: -1,
         }}
       ></div>
 
-      <Navbar /> {/* Use the Navbar component */}
+      <Navbar />
       
       {/* Main Flex Container */}
       <div className="flex justify-center items-center w-full max-w-screen-xl px-8 py-16">
@@ -128,7 +125,11 @@ export default function SignUp() {
           <h2 className="text-3xl font-bold mb-6 text-center text-[#003366]">Sign Up to TrustScan</h2>
           
           {/* Display error message */}
-          {error && <p className="text-blue-500 text-sm text-center mb-4">{error}</p>}
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
 
           {/* Sign-Up Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -205,6 +206,7 @@ export default function SignUp() {
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 required
+                minLength={6}
                 className="mt-1 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-[#003366] focus:border-[#003366] text-gray-800"
                 placeholder="Create a password"
               />
@@ -254,10 +256,20 @@ export default function SignUp() {
             <div className="mb-4 text-center">
               <button 
                 type="submit" 
-                disabled={loading} 
-                className={`w-full ${loading ? 'bg-gray-400' : 'bg-[#003366]'} text-white py-3 rounded-md shadow-md hover:bg-blue-700 transition transform hover:scale-105`}
+                disabled={loading}
+                className={`w-full bg-[#003366] text-white py-3 rounded-md shadow-md hover:bg-blue-700 transition ${
+                  loading ? 'opacity-75 cursor-not-allowed' : ''
+                }`}
               >
-                {loading ? 'Processing...' : 'Create Account'}
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating account...
+                  </span>
+                ) : 'Create Account'}
               </button>
             </div>
           </form>

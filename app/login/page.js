@@ -3,7 +3,6 @@ import { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { verifyPassword } from '../../lib/auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -29,10 +28,9 @@ export default function Login() {
         throw new Error('Invalid email or password');
       }
 
-      // 2. Verify hashed password
-      const isPasswordValid = await verifyPassword(password, user.password);
-      
-      if (!isPasswordValid) {
+      // 2. Simple password comparison (for demo purposes)
+      // REMOVE THIS IN PRODUCTION - this is only for university project
+      if (password !== user.password) {
         throw new Error('Invalid email or password');
       }
 
